@@ -56,6 +56,14 @@ RUN set -xe; \
     usermod -p "*" laradock -s /bin/bash && \
     apt-get install -yqq \
       apt-utils \
+      git-flow \
+      libpq-dev \
+      gettext \
+      libmagic1 \
+      ffmpeg \
+      libsm6 \
+      libxrender1 \
+
       #
       #--------------------------------------------------------------------------
       # Mandatory Software's Installation
@@ -1184,6 +1192,9 @@ USER laradock
 USER root
 
 ARG INSTALL_SYMFONY=false
+#requirements django
+COPY ./requirements /home/laradock/requirements
+RUN chmod -R 775 /home/laradock/requirements
 
 RUN if [ ${INSTALL_SYMFONY} = true ]; then \
   mkdir -p /usr/local/bin \
@@ -1215,13 +1226,36 @@ RUN if [ ${INSTALL_PYTHON} = true ]; then \
 ARG INSTALL_PYTHON3=false
 
 RUN if [ ${INSTALL_PYTHON3} = true ]; then \
-  apt-get -y install python3 python3-dev build-essential  \
-  && curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py  \
-  && python3 get-pip.py  \
-  && rm get-pip.py  \
-  && python3 -m pip install --upgrade --force-reinstall pip  \
-  && python3 -m pip install --upgrade virtualenv \
+  apt-get -y update \
+  && apt-get -y install software-properties-common \
+  && add-apt-repository ppa:deadsnakes/ppa \
+  && apt-get -y update \
+  && apt-get install -y libmagic1 ffmpeg git git-flow gcc libpq-dev \
+  && apt-get -y install python3.11 python3.11-dev python3.11-venv build-essential \
+  && curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py \
+  && python3.11 get-pip.py \
+  && rm get-pip.py \
+  && python3.11 -m pip install --upgrade --force-reinstall pip \
+  && python3.11 -m pip install isort \
+  && python3.11 -m pip install pre-commit \
+  && python3.11 -m pip install flake8 \
+  && python3.11 -m pip install autoflake \
+  && python3.11 -m pip install black \
+  && python3.11 -m pip install "cookiecutter>=1.7.0" \
+  && python3.11 -m pip install pytest-playwright \
+  && python3.11 -m pip install scrapy \
+  && cd /home/laradock/requirements \
+  && pip install -r dev.txt \
+  && apt-get install -yqq locales \
+  && playwright install \
+  && playwright install-deps \
+  && echo '' >> /usr/share/locale/locale.alias \
+  && temp="${ADDITIONAL_LOCALES%\"}" \
+  && temp="${temp#\"}" \
+  && for i in ${temp}; do sed -i "/$i/s/^#//g" /etc/locale.gen; done \
+  && locale-gen \
 ;fi
+
 
 ###########################################################################
 # POWERLINE:
